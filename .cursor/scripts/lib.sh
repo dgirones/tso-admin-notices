@@ -41,7 +41,9 @@ start_mariadb() {
   if [ ! -d "$MYSQL_DATADIR/mysql" ]; then
     sudo mariadb-install-db --user=mysql --basedir=/usr --datadir="$MYSQL_DATADIR" >/dev/null 2>&1 || true
   fi
-  sudo bash -c "nohup mariadbd --user=mysql --datadir='$MYSQL_DATADIR' --socket='$MYSQL_SOCKET' > /tmp/mariadb.log 2>&1 &"
+  # Disable io_uring / native AIO: sandboxed build & agent pods can block those
+  # syscalls, which makes InnoDB hang while sizing ibtmp1 on first start.
+  sudo bash -c "nohup mariadbd --user=mysql --datadir='$MYSQL_DATADIR' --socket='$MYSQL_SOCKET' --innodb-use-native-aio=0 --innodb-flush-method=fsync > /tmp/mariadb.log 2>&1 &"
   # Wait generously: a datadir captured from a live snapshot may run InnoDB
   # crash recovery on first start, which can take well beyond a few seconds.
   for _ in $(seq 1 120); do
