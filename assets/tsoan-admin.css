@@ -1,0 +1,158 @@
+/**
+ * TSO Admin Notices Manager - Admin Styles
+ *
+ * @package TSO_Admin_Notices
+ * @since   1.0.2
+ */
+
+.tsoan-hidden-group {
+	display: none !important;
+}
+
+.tsoan-revealed .notice,
+.tsoan-revealed .updated,
+.tsoan-revealed .update-nag,
+.tsoan-revealed .error,
+.tsoan-revealed .fs-notice,
+.notice.tsoan-revealed,
+.updated.tsoan-revealed,
+.update-nag.tsoan-revealed,
+.error.tsoan-revealed,
+.fs-notice.tsoan-revealed,
+.rank-math-notice.tsoan-revealed,
+.wp-helpers-notice.tsoan-revealed,
+.backuply-backup-nag.tsoan-revealed {
+	border-left-color: #f0a500 !important;
+	opacity: 0.9;
+}
+
+#wp-admin-bar-tsoan-toggle > .ab-item {
+	cursor: pointer;
+}
+
+#wp-admin-bar-tsoan-toggle > .ab-item:hover {
+	background-color: rgba( 255, 255, 255, 0.1 );
+}
+
+.tsoan-wrap h1 {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.tsoan-wrap .tsoan-logo {
+	font-size: 1.4em;
+	line-height: 1;
+}
+
+.tsoan-description {
+	max-width: 680px;
+	color: #555;
+	margin-bottom: 24px !important;
+}
+
+.tsoan-section {
+	background: #fff;
+	border: 1px solid #e0e0e0;
+	border-radius: 4px;
+	padding: 20px 24px;
+	margin-bottom: 20px;
+	max-width: 900px;
+}
+
+.tsoan-section h2 {
+	margin-top: 0;
+	padding-bottom: 8px;
+	border-bottom: 1px solid #f0f0f0;
+	font-size: 1.05em;
+	color: #1d2327;
+}
+
+.tsoan-whitelist-container {
+	margin-top: 12px;
+}
+
+.tsoan-whitelist-search-wrap {
+	margin-bottom: 10px;
+}
+
+.tsoan-whitelist-search-wrap input[type="search"] {
+	width: 100%;
+	max-width: 380px;
+	padding: 6px 10px;
+	border: 1px solid #bbb;
+	border-radius: 3px;
+	font-size: 13px;
+}
+
+.tsoan-whitelist {
+	max-height: 320px;
+	overflow-y: auto;
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	padding: 4px 0;
+	background: #fafafa;
+}
+
+.tsoan-whitelist-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 7px 14px;
+	cursor: pointer;
+	transition: background 0.1s;
+	border-bottom: 1px solid #f0f0f0;
+	flex-wrap: wrap;
+}
+
+.tsoan-whitelist-item:last-child {
+	border-bottom: none;
+}
+
+.tsoan-whitelist-item:hover {
+	background: #f0f6fc;
+}
+
+.tsoan-whitelist-item input[type="checkbox"] {
+	flex-shrink: 0;
+	margin: 0;
+}
+
+.tsoan-plugin-name {
+	flex: 1 1 auto;
+	font-size: 13px;
+	color: #1d2327;
+}
+
+.tsoan-plugin-version {
+	font-size: 11px;
+	color: #888;
+	flex-shrink: 0;
+}
+
+.tsoan-plugin-slug {
+	font-size: 11px;
+	color: #999;
+	background: #f0f0f0;
+	padding: 1px 5px;
+	border-radius: 2px;
+	flex-shrink: 0;
+}
+
+.tsoan-footer {
+	margin-top: 28px;
+	padding-top: 12px;
+	border-top: 1px solid #e0e0e0;
+	font-size: 12px;
+	color: #888;
+	max-width: 900px;
+}
+
+.tsoan-footer a {
+	color: #888;
+	text-decoration: underline;
+}
+
+.tsoan-footer a:hover {
+	color: #0073aa;
+}
