@@ -11,4 +11,7 @@ source "$SCRIPT_DIR/lib.sh"
 start_mariadb >/dev/null 2>&1 || true
 
 echo "==> Serving WordPress at http://localhost:$WP_PORT (admin/admin)"
-exec wp server --host=0.0.0.0 --port="$WP_PORT"
+# wp server uses its docroot as the PHP web root; pin it to the WordPress dir so
+# it works regardless of the terminal's current working directory.
+cd "$WP_DIR"
+exec wp server --host=0.0.0.0 --port="$WP_PORT" --docroot="$WP_DIR"

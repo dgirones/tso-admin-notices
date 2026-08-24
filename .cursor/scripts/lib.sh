@@ -17,7 +17,8 @@ export DB_PASS="${DB_PASS:-wp}"
 export DB_HOST="${DB_HOST:-127.0.0.1}"
 
 export MYSQL_DATADIR="${MYSQL_DATADIR:-/var/lib/mysql}"
-export MYSQL_SOCKET="${MYSQL_SOCKET:-/var/run/mysqld/mysqld.sock}"
+export MYSQL_SOCKET="${MYSQL_SOCKET:-/run/mysqld/mysqld.sock}"
+export MYSQL_PIDFILE="${MYSQL_PIDFILE:-/run/mysqld/mysqld.pid}"
 
 # WP-CLI runs against $WP_DIR and (in cloud) as the ubuntu user, so allow-root is harmless.
 wp() {
@@ -32,8 +33,11 @@ start_mariadb() {
   if mariadb_running; then
     return 0
   fi
-  sudo mkdir -p "$(dirname "$MYSQL_SOCKET")" "$MYSQL_DATADIR"
-  sudo chown -R mysql:mysql "$(dirname "$MYSQL_SOCKET")" "$MYSQL_DATADIR"
+  # Create both the socket dir and the default Debian pid-file dir. Some pods do
+  # not symlink /var/run -> /run, so MariaDB's configured pid-file dir may differ
+  # from the socket dir; create /run/mysqld and /var/run/mysqld to cover both.
+  sudo mkdir -p "$(dirname "$MYSQL_SOCKET")" "$(dirname "$MYSQL_PIDFILE")" /var/run/mysqld "$MYSQL_DATADIR"
+  sudo chown -R mysql:mysql "$(dirname "$MYSQL_SOCKET")" "$(dirname "$MYSQL_PIDFILE")" /var/run/mysqld "$MYSQL_DATADIR"
   # Clear a stale socket left by a previous (crashed or snapshotted) daemon.
   if [ -S "$MYSQL_SOCKET" ] && ! mariadb_running; then
     sudo rm -f "$MYSQL_SOCKET"
@@ -43,7 +47,7 @@ start_mariadb() {
   fi
   # Disable io_uring / native AIO and reverse-DNS: sandboxed build & agent pods
   # can block those syscalls, which makes mariadbd hang during InnoDB startup.
-  sudo bash -c "nohup mariadbd --user=mysql --datadir='$MYSQL_DATADIR' --socket='$MYSQL_SOCKET' --innodb-use-native-aio=0 --skip-name-resolve > /tmp/mariadb.log 2>&1 &"
+  sudo bash -c "nohup mariadbd --user=mysql --datadir='$MYSQL_DATADIR' --socket='$MYSQL_SOCKET' --pid-file='$MYSQL_PIDFILE' --innodb-use-native-aio=0 --skip-name-resolve > /tmp/mariadb.log 2>&1 &"
   # Wait generously: a datadir captured from a live snapshot may run InnoDB
   # crash recovery on first start, which can take well beyond a few seconds.
   for _ in $(seq 1 120); do
