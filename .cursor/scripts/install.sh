@@ -56,30 +56,9 @@ add_action( 'all_admin_notices', function () {
 } );
 PHP
 
-# The database is only needed to finish the WordPress install and activate plugins.
-# Start it transiently here so the snapshot already contains an installed site,
-# then leave process management to start.sh on each boot.
-echo "==> Ensuring database is available for one-time site install"
-start_mariadb
-ensure_database
-
-if ! wp core is-installed 2>/dev/null; then
-  echo "==> Installing WordPress site"
-  wp core install \
-    --url="$WP_URL" \
-    --title="TSO Plugin Dev" \
-    --admin_user=admin \
-    --admin_password=admin \
-    --admin_email=dev@example.com \
-    --skip-email
-else
-  echo "    WordPress site already installed."
-fi
-
-echo "==> Activating the plugin and demo fixtures"
-wp plugin activate "$PLUGIN_SLUG" acme-promo backupzilla
-
-echo "==> Installed plugins:"
-wp plugin list
-
-echo "==> install.sh complete."
+# NOTE: no database work here on purpose. install.sh must terminate without
+# depending on a running service, and it also runs inside the restricted build
+# sandbox (where mariadbd cannot start). Installing the WordPress site and
+# activating plugins requires a live DB, so that is done at boot in start.sh,
+# which runs in the agent pod where MariaDB works normally.
+echo "==> install.sh complete (site install + activation happen in start.sh)."
