@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<ruleset name="TSO Admin Notices Manager">
+	<description>Coding standards for the TSO Admin Notices Manager plugin.</description>
+
+	<!-- Scan the plugin PHP; skip vendor and third-party trees. -->
+	<file>.</file>
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*/languages/*</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+
+	<!-- WordPress.org coding standards. -->
+	<rule ref="WordPress"/>
+
+	<!-- Project prefixes (TSO WordPress.org standards: >= 5 unique chars). -->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="tsoan"/>
+				<element value="TSOAN"/>
+				<element value="tso_admin_notices"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Text domain must match the plugin slug exactly. -->
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="tso-admin-notices"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Single-file plugin: the main file legitimately holds the class. -->
+	<rule ref="WordPress.Files.FileName.InvalidClassFileName">
+		<exclude-pattern>tso-admin-notices.php</exclude-pattern>
+	</rule>
+
+	<!-- PHP / WordPress compatibility targets. -->
+	<config name="minimum_wp_version" value="6.1"/>
+	<config name="testVersion" value="7.4-"/>
+	<rule ref="PHPCompatibilityWP"/>
+</ruleset>
