@@ -34,18 +34,24 @@ start_mariadb() {
   fi
   sudo mkdir -p "$(dirname "$MYSQL_SOCKET")" "$MYSQL_DATADIR"
   sudo chown -R mysql:mysql "$(dirname "$MYSQL_SOCKET")" "$MYSQL_DATADIR"
+  # Clear a stale socket left by a previous (crashed or snapshotted) daemon.
+  if [ -S "$MYSQL_SOCKET" ] && ! mariadb_running; then
+    sudo rm -f "$MYSQL_SOCKET"
+  fi
   if [ ! -d "$MYSQL_DATADIR/mysql" ]; then
     sudo mariadb-install-db --user=mysql --basedir=/usr --datadir="$MYSQL_DATADIR" >/dev/null 2>&1 || true
   fi
   sudo bash -c "nohup mariadbd --user=mysql --datadir='$MYSQL_DATADIR' --socket='$MYSQL_SOCKET' > /tmp/mariadb.log 2>&1 &"
-  for _ in $(seq 1 30); do
+  # Wait generously: a datadir captured from a live snapshot may run InnoDB
+  # crash recovery on first start, which can take well beyond a few seconds.
+  for _ in $(seq 1 120); do
     if mariadb_running; then
       return 0
     fi
     sleep 1
   done
   echo "MariaDB failed to start; log:" >&2
-  tail -n 30 /tmp/mariadb.log >&2 || true
+  tail -n 40 /tmp/mariadb.log >&2 || true
   return 1
 }
 
