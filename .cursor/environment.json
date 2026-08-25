@@ -1,0 +1,17 @@
+{
+  "name": "TSO Admin Notices Manager",
+  "user": "ubuntu",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "install": "bash .cursor/scripts/install.sh",
+  "start": "bash .cursor/scripts/start.sh",
+  "terminals": [
+    {
+      "name": "wp-server",
+      "command": "bash .cursor/scripts/serve.sh"
+    }
+  ],
+  "ports": [8080]
+}
