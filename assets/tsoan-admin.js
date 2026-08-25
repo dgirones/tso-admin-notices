@@ -75,7 +75,34 @@
 			if ( el.textContent.trim() === '' ) {
 				return;
 			}
+			// Element-level marked notices are tracked separately (avoid double count).
+			if ( el.querySelector( '[data-tsoan-hide]' ) ) {
+				return;
+			}
 			el.setAttribute( 'data-tsoan-type', 'php' );
+			groups.push( el );
+		} );
+	}
+
+	/**
+	 * Track notices marked by PHP with data-tsoan-hide. These are kept hidden by
+	 * CSS regardless of where WordPress core relocates them, so we only need to
+	 * register them for counting and the show/hide toggle. Only the outermost
+	 * marked element in a nested set is tracked.
+	 */
+	function collectMarkedHidden() {
+		document.querySelectorAll( '[data-tsoan-hide]' ).forEach( function ( el ) {
+			if ( groups.indexOf( el ) !== -1 ) {
+				return;
+			}
+			if ( el.parentElement && el.parentElement.closest( '[data-tsoan-hide]' ) ) {
+				return;
+			}
+			if ( el.textContent.trim() === '' ) {
+				return;
+			}
+			el.setAttribute( 'data-tsoan-type', 'marked' );
+			el.setAttribute( 'aria-hidden', 'true' );
 			groups.push( el );
 		} );
 	}
@@ -88,6 +115,10 @@
 		// itself, so they stay visible even after WordPress core relocates them
 		// out of the .tsoan-safe-group wrapper.
 		if ( el.hasAttribute( 'data-tsoan-keep' ) || el.closest( '[data-tsoan-keep]' ) ) {
+			return true;
+		}
+		// PHP-marked notices are handled by collectMarkedHidden(); skip here.
+		if ( el.hasAttribute( 'data-tsoan-hide' ) || el.closest( '[data-tsoan-hide]' ) ) {
 			return true;
 		}
 		if ( el.hasAttribute( 'data-tsoan-type' ) || el.hasAttribute( 'data-tso-type' ) ) {
@@ -209,6 +240,7 @@
 		scanPending = true;
 		setTimeout( function () {
 			scanPending = false;
+			collectMarkedHidden();
 			scan();
 			updateAdminBarLabel();
 		}, 50 );
@@ -253,8 +285,11 @@
 					}
 					var idx = groups.indexOf( rnode );
 					if ( idx > -1 ) {
-						groups.splice( idx, 1 );
-						needRecount = true;
+						// Keep tracking elements that core merely relocated (still in DOM).
+						if ( ! document.body.contains( rnode ) ) {
+							groups.splice( idx, 1 );
+							needRecount = true;
+						}
 					} else if ( mutations[ i ].target.closest ) {
 						var pg = mutations[ i ].target.closest( '.tsoan-hidden-group, .tsoan-revealed' );
 						if ( pg ) {
@@ -338,8 +373,12 @@
 	}
 
 	function hideGroup( group ) {
-		if ( 'js' === group.getAttribute( 'data-tsoan-type' ) ) {
+		var type = group.getAttribute( 'data-tsoan-type' );
+		if ( 'js' === type ) {
 			group.style.setProperty( 'display', 'none', 'important' );
+			group.classList.remove( 'tsoan-revealed' );
+		} else if ( 'marked' === type ) {
+			// display:none comes from the [data-tsoan-hide] CSS rule.
 			group.classList.remove( 'tsoan-revealed' );
 		} else {
 			group.classList.add( 'tsoan-hidden-group' );
@@ -349,8 +388,11 @@
 	}
 
 	function showGroup( group ) {
-		if ( 'js' === group.getAttribute( 'data-tsoan-type' ) ) {
+		var type = group.getAttribute( 'data-tsoan-type' );
+		if ( 'js' === type ) {
 			group.style.removeProperty( 'display' );
+			group.classList.add( 'tsoan-revealed' );
+		} else if ( 'marked' === type ) {
 			group.classList.add( 'tsoan-revealed' );
 		} else {
 			group.classList.remove( 'tsoan-hidden-group' );
@@ -466,6 +508,7 @@
 	}
 
 	function runScanCycle() {
+		collectMarkedHidden();
 		collectPhpGroups();
 		scan();
 		updateAdminBarLabel();
