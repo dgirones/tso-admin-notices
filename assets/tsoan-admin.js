@@ -84,6 +84,12 @@
 		if ( el.closest( '.tsoan-hidden-group' ) ) {
 			return true;
 		}
+		// First-party / whitelisted notices carry this marker on the element
+		// itself, so they stay visible even after WordPress core relocates them
+		// out of the .tsoan-safe-group wrapper.
+		if ( el.hasAttribute( 'data-tsoan-keep' ) || el.closest( '[data-tsoan-keep]' ) ) {
+			return true;
+		}
 		if ( el.hasAttribute( 'data-tsoan-type' ) || el.hasAttribute( 'data-tso-type' ) ) {
 			return true;
 		}

@@ -278,11 +278,19 @@ final class TSOAN_Manager {
 							return;
 						}
 
-						$wrap_class = $keep_visible ? 'tsoan-safe-group' : 'tsoan-hidden-group';
-						$wrap_attrs = $keep_visible ? '' : ' aria-hidden="true"';
+						if ( $keep_visible ) {
+							// Mark the notice element itself (not just the wrapper) so it
+							// stays visible even after WordPress core relocates bare notices
+							// out of this wrapper (wp-admin/js/common.js moves
+							// div.notice/updated/error after the page header on load).
+							$html = self::mark_notice_elements( $html );
+							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Raw notice HTML; wrapper attrs static/escaped.
+							echo '<div class="tsoan-safe-group" data-tsoan-source="' . esc_attr( $source ) . '">' . $html . '</div>';
+							return;
+						}
 
 						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Raw HTML from third-party notice callbacks; wrapper attrs are static/escaped.
-						echo '<div class="' . $wrap_class . '" data-tsoan-source="' . esc_attr( $source ) . '"' . $wrap_attrs . '>' . $html . '</div>';
+						echo '<div class="tsoan-hidden-group" data-tsoan-source="' . esc_attr( $source ) . '" aria-hidden="true">' . $html . '</div>';
 					},
 					'accepted_args' => $accepted_args,
 					'tsoan_wrapped' => true,
@@ -309,6 +317,34 @@ final class TSOAN_Manager {
 			0 === strpos( $source, 'tso_' ) ||
 			0 === strpos( $source, 'mu-tso-' ) ||
 			0 === strpos( $source, 'mu-tso_' )
+		);
+	}
+
+	/**
+	 * Tag notice elements in a captured HTML string with data-tsoan-keep.
+	 *
+	 * WordPress core (wp-admin/js/common.js) relocates bare
+	 * div.notice/div.updated/div.error out of any wrapper on load, which would
+	 * strip an ancestor-based "keep visible" marker. Marking the element itself
+	 * ensures the JS layer still recognises kept notices after they are moved.
+	 *
+	 * @param string $html Captured notice HTML.
+	 * @return string
+	 */
+	private static function mark_notice_elements( $html ) {
+		return (string) preg_replace_callback(
+			'/<div\b[^>]*>/i',
+			static function ( $matches ) {
+				$tag = $matches[0];
+				if ( false !== stripos( $tag, 'data-tsoan-keep' ) ) {
+					return $tag;
+				}
+				if ( preg_match( '/class\s*=\s*["\'][^"\']*(?:notice|updated|error|[\w-]+-nag)/i', $tag ) ) {
+					return substr( $tag, 0, -1 ) . ' data-tsoan-keep="1">';
+				}
+				return $tag;
+			},
+			$html
 		);
 	}
 
