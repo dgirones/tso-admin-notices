@@ -4,7 +4,7 @@ Tags: admin notices, notices manager, clean admin, plugins notices
 Requires at least: 6.1
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -65,6 +65,11 @@ No. The plugin only runs in the WordPress admin area (`is_admin()`), and never d
 2. Settings page with whitelist.
 
 == Changelog ==
+
+= 1.0.3 =
+* First-party TSO plugins (e.g. TSO Link Inspector) are no longer hidden — their onboarding/setup notices always stay visible.
+* Whitelisted plugins now stay visible against the JavaScript fallback layer too, not only the PHP layer.
+* Catch update/promo nags printed on `in_admin_header` (the full-width slot above the page), which were previously missed while the counter still showed zero.
 
 = 1.0.2 =
 * Fixed notices still visible while counter showed zero (Backuply, Rank Math, etc.).

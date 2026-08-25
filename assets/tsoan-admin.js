@@ -38,6 +38,7 @@
 		'.plugin-card',
 		'.plugin-check',
 		'.tsoan-wrap',
+		'.tsoan-safe-group',
 		'#screen-meta',
 	].join( ',' );
 
