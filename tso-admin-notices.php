@@ -278,19 +278,25 @@ final class TSOAN_Manager {
 							return;
 						}
 
-						if ( $keep_visible ) {
-							// Mark the notice element itself (not just the wrapper) so it
-							// stays visible even after WordPress core relocates bare notices
-							// out of this wrapper (wp-admin/js/common.js moves
-							// div.notice/updated/error after the page header on load).
-							$html = self::mark_notice_elements( $html );
-							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Raw notice HTML; wrapper attrs static/escaped.
-							echo '<div class="tsoan-safe-group" data-tsoan-source="' . esc_attr( $source ) . '">' . $html . '</div>';
+						// Decisions must ride on the notice ELEMENT, not an ancestor
+						// wrapper: WordPress core (wp-admin/js/common.js) relocates bare
+						// div.notice/updated/error out of any wrapper on load (e.g. into
+						// .wrap / .tsoan-wrap), which would otherwise strip the marker.
+						$mode = $keep_visible ? 'keep' : 'hide';
+						list( $marked, $found ) = self::mark_notice_elements( $html, $mode, $source );
+
+						if ( $found > 0 ) {
+							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Third-party notice HTML with our data-* markers injected; CSS/JS act on the markers.
+							echo $marked;
 							return;
 						}
 
-						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Raw HTML from third-party notice callbacks; wrapper attrs are static/escaped.
-						echo '<div class="tsoan-hidden-group" data-tsoan-source="' . esc_attr( $source ) . '" aria-hidden="true">' . $html . '</div>';
+						// Fallback for output with no recognisable notice element
+						// (core will not relocate it, so an ancestor wrapper is safe).
+						$wrap_class = $keep_visible ? 'tsoan-safe-group' : 'tsoan-hidden-group';
+						$wrap_attrs = $keep_visible ? '' : ' aria-hidden="true"';
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Raw notice HTML; wrapper attrs are static/escaped.
+						echo '<div class="' . $wrap_class . '" data-tsoan-source="' . esc_attr( $source ) . '"' . $wrap_attrs . '>' . $html . '</div>';
 					},
 					'accepted_args' => $accepted_args,
 					'tsoan_wrapped' => true,
@@ -321,31 +327,41 @@ final class TSOAN_Manager {
 	}
 
 	/**
-	 * Tag notice elements in a captured HTML string with data-tsoan-keep.
+	 * Tag notice elements in a captured HTML string with our data-* markers.
 	 *
 	 * WordPress core (wp-admin/js/common.js) relocates bare
-	 * div.notice/div.updated/div.error out of any wrapper on load, which would
-	 * strip an ancestor-based "keep visible" marker. Marking the element itself
-	 * ensures the JS layer still recognises kept notices after they are moved.
+	 * div.notice/div.updated/div.error out of any wrapper on load (moving them
+	 * after the page header, e.g. into .wrap / .tsoan-wrap). Marking the element
+	 * itself — instead of an ancestor wrapper — ensures the JS/CSS layers keep
+	 * hiding or showing the right notices after they are moved.
 	 *
-	 * @param string $html Captured notice HTML.
-	 * @return string
+	 * @param string $html   Captured notice HTML.
+	 * @param string $mode   'keep' (stay visible) or 'hide'.
+	 * @param string $source Plugin slug.
+	 * @return array{0:string,1:int} Marked HTML and number of notice elements tagged.
 	 */
-	private static function mark_notice_elements( $html ) {
-		return (string) preg_replace_callback(
+	private static function mark_notice_elements( $html, $mode, $source ) {
+		$found = 0;
+		$attr  = ( 'keep' === $mode ? ' data-tsoan-keep="1"' : ' data-tsoan-hide="1"' )
+			. ' data-tsoan-source="' . esc_attr( $source ) . '"';
+
+		$html = (string) preg_replace_callback(
 			'/<div\b[^>]*>/i',
-			static function ( $matches ) {
+			static function ( $matches ) use ( $attr, &$found ) {
 				$tag = $matches[0];
-				if ( false !== stripos( $tag, 'data-tsoan-keep' ) ) {
+				if ( false !== stripos( $tag, 'data-tsoan-keep' ) || false !== stripos( $tag, 'data-tsoan-hide' ) ) {
 					return $tag;
 				}
 				if ( preg_match( '/class\s*=\s*["\'][^"\']*(?:notice|updated|error|[\w-]+-nag)/i', $tag ) ) {
-					return substr( $tag, 0, -1 ) . ' data-tsoan-keep="1">';
+					++$found;
+					return substr( $tag, 0, -1 ) . $attr . '>';
 				}
 				return $tag;
 			},
 			$html
 		);
+
+		return array( $html, $found );
 	}
 
 	/**
@@ -475,7 +491,8 @@ final class TSOAN_Manager {
 	 */
 	private function get_preload_css() {
 		return ''
-			. '.tsoan-hidden-group{display:none!important}'
+			/* Element-level marker (survives core notice relocation) + legacy wrapper. */
+			. '.tsoan-hidden-group,[data-tsoan-hide]{display:none!important}'
 			/* Vendor / SDK notices (never core). */
 			. '#wpbody-content .fs-notice,'
 			. '#wpbody-content .rank-math-notice,'
@@ -508,7 +525,9 @@ final class TSOAN_Manager {
 			. '#wpbody-content .backuply-backup-nag.tsoan-revealed,'
 			. '#wpbody-content .woocommerce-message.tsoan-revealed,'
 			. '#wpbody-content .woocommerce-error.tsoan-revealed,'
-			. '#wpbody-content .woocommerce-info.tsoan-revealed{display:block!important}';
+			. '#wpbody-content .woocommerce-info.tsoan-revealed{display:block!important}'
+			/* Reveal element-level marked notices when toggled (any location). */
+			. '[data-tsoan-hide].tsoan-revealed{display:block!important}';
 	}
 
 	/**
