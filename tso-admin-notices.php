@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       TSO Admin Notices Manager
  * Description:       Hides annoying plugin notices (promotional, backup, update messages) from the WordPress admin. Notices remain recoverable via the admin bar.
- * Version:           1.0.2
+ * Version:           1.0.3
  * Requires at least: 6.1
  * Requires PHP:      7.4
  * Author:            Tu Soporte Online
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'TSOAN_VERSION', '1.0.2' );
+define( 'TSOAN_VERSION', '1.0.3' );
 define( 'TSOAN_FILE', __FILE__ );
 define( 'TSOAN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TSOAN_URL', plugin_dir_url( __FILE__ ) );
@@ -115,6 +115,8 @@ final class TSOAN_Manager {
 			add_action( 'all_admin_notices', array( $this, 'wrap_late_pass' ), PHP_INT_MIN );
 			add_action( 'user_admin_notices', array( $this, 'wrap_late_pass' ), PHP_INT_MIN );
 			add_action( 'network_admin_notices', array( $this, 'wrap_late_pass' ), PHP_INT_MIN );
+			// Full-width slot above #wpbody-content: some update/promo nags print here.
+			add_action( 'in_admin_header', array( $this, 'wrap_late_pass' ), PHP_INT_MIN );
 		}
 	}
 
@@ -199,15 +201,21 @@ final class TSOAN_Manager {
 		foreach ( $hooks as $hook ) {
 			$this->wrap_hook( $hook );
 		}
+		// in_admin_header renders full-width above #wpbody-content; some plugins
+		// print promo/update nags here. Only wrap output that looks like a notice.
+		$this->wrap_hook( 'in_admin_header', true );
 	}
 
 	/**
 	 * Wrap eligible callbacks on one hook.
 	 *
-	 * @param string $hook Hook name.
+	 * @param string $hook              Hook name.
+	 * @param bool   $notice_like_only  When true (shared hooks such as
+	 *                                  in_admin_header), only intercept output that
+	 *                                  looks like an admin notice; pass the rest through.
 	 * @return void
 	 */
-	private function wrap_hook( $hook ) {
+	private function wrap_hook( $hook, $notice_like_only = false ) {
 		global $wp_filter;
 
 		if ( ! isset( $wp_filter[ $hook ] ) ) {
@@ -225,13 +233,14 @@ final class TSOAN_Manager {
 
 				$source = $this->get_callback_source( $cb );
 
+				// Never touch this plugin's own output.
 				if ( 'tso-admin-notices' === $source ) {
 					continue;
 				}
 
-				if ( $this->is_whitelisted( $source ) ) {
-					continue;
-				}
+				// First-party TSO plugins and whitelisted plugins stay visible, but
+				// are still wrapped in a marked container so the JS layer skips them.
+				$keep_visible = $this->is_own_family( $source ) || $this->is_whitelisted( $source );
 
 				$fn_key = $this->get_fn_key( $cb['function'] );
 				if ( '' !== $fn_key && isset( $this->wrapped_fn_keys[ $fn_key ] ) ) {
@@ -248,7 +257,7 @@ final class TSOAN_Manager {
 
 				// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Intentional wrap of notice callbacks.
 				$wp_filter[ $hook ]->callbacks[ $priority ][ $key ] = array(
-					'function'      => static function () use ( $original_fn, $source, $accepted_args ) {
+					'function'      => static function () use ( $original_fn, $source, $accepted_args, $keep_visible, $notice_like_only ) {
 						ob_start();
 						if ( $accepted_args > 0 ) {
 							call_user_func_array( $original_fn, array_fill( 0, $accepted_args, null ) );
@@ -256,10 +265,32 @@ final class TSOAN_Manager {
 							call_user_func( $original_fn );
 						}
 						$html = ob_get_clean();
-						if ( '' !== trim( (string) $html ) ) {
-							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Raw HTML from third-party notice callbacks.
-							echo '<div class="tsoan-hidden-group" data-tsoan-source="' . esc_attr( $source ) . '" aria-hidden="true">' . $html . '</div>';
+
+						if ( '' === trim( (string) $html ) ) {
+							return;
 						}
+
+						// On shared hooks only intercept output that looks like an admin
+						// notice; anything else is passed through untouched.
+						if ( $notice_like_only && ! preg_match( '#class\s*=\s*["\'][^"\']*(?:notice|updated|update-nag|[\w-]+-nag)#i', $html ) ) {
+							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Unmodified third-party output passed through untouched.
+							echo $html;
+							return;
+						}
+
+						if ( $keep_visible ) {
+							// Mark the notice element itself (not just the wrapper) so it
+							// stays visible even after WordPress core relocates bare notices
+							// out of this wrapper (wp-admin/js/common.js moves
+							// div.notice/updated/error after the page header on load).
+							$html = self::mark_notice_elements( $html );
+							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Raw notice HTML; wrapper attrs static/escaped.
+							echo '<div class="tsoan-safe-group" data-tsoan-source="' . esc_attr( $source ) . '">' . $html . '</div>';
+							return;
+						}
+
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Raw HTML from third-party notice callbacks; wrapper attrs are static/escaped.
+						echo '<div class="tsoan-hidden-group" data-tsoan-source="' . esc_attr( $source ) . '" aria-hidden="true">' . $html . '</div>';
 					},
 					'accepted_args' => $accepted_args,
 					'tsoan_wrapped' => true,
@@ -269,27 +300,76 @@ final class TSOAN_Manager {
 	}
 
 	/**
-	 * Stable callable key for dedup.
+	 * Whether a source is one of the first-party TSO plugins / mu-plugins.
 	 *
-	 * @param mixed $fn Callable.
+	 * Their notices (onboarding, setup, results) are intentional and must stay
+	 * visible instead of being hidden by this plugin.
+	 *
+	 * @param string $source Plugin slug.
+	 * @return bool
+	 */
+	private function is_own_family( $source ) {
+		if ( '' === $source || 'unknown' === $source ) {
+			return false;
+		}
+		return (
+			0 === strpos( $source, 'tso-' ) ||
+			0 === strpos( $source, 'tso_' ) ||
+			0 === strpos( $source, 'mu-tso-' ) ||
+			0 === strpos( $source, 'mu-tso_' )
+		);
+	}
+
+	/**
+	 * Tag notice elements in a captured HTML string with data-tsoan-keep.
+	 *
+	 * WordPress core (wp-admin/js/common.js) relocates bare
+	 * div.notice/div.updated/div.error out of any wrapper on load, which would
+	 * strip an ancestor-based "keep visible" marker. Marking the element itself
+	 * ensures the JS layer still recognises kept notices after they are moved.
+	 *
+	 * @param string $html Captured notice HTML.
 	 * @return string
 	 */
-	private function get_fn_key( $fn ) {
-		if ( is_string( $fn ) ) {
-			return 'fn:' . $fn;
+	private static function mark_notice_elements( $html ) {
+		return (string) preg_replace_callback(
+			'/<div\b[^>]*>/i',
+			static function ( $matches ) {
+				$tag = $matches[0];
+				if ( false !== stripos( $tag, 'data-tsoan-keep' ) ) {
+					return $tag;
+				}
+				if ( preg_match( '/class\s*=\s*["\'][^"\']*(?:notice|updated|error|[\w-]+-nag)/i', $tag ) ) {
+					return substr( $tag, 0, -1 ) . ' data-tsoan-keep="1">';
+				}
+				return $tag;
+			},
+			$html
+		);
+	}
+
+	/**
+	 * Stable callable key for dedup.
+	 *
+	 * @param mixed $callback Callable.
+	 * @return string
+	 */
+	private function get_fn_key( $callback ) {
+		if ( is_string( $callback ) ) {
+			return 'fn:' . $callback;
 		}
 
-		if ( is_array( $fn ) && 2 === count( $fn ) ) {
-			$class = is_object( $fn[0] ) ? get_class( $fn[0] ) : (string) $fn[0];
-			return 'method:' . $class . '::' . $fn[1];
+		if ( is_array( $callback ) && 2 === count( $callback ) ) {
+			$class = is_object( $callback[0] ) ? get_class( $callback[0] ) : (string) $callback[0];
+			return 'method:' . $class . '::' . $callback[1];
 		}
 
-		if ( $fn instanceof Closure ) {
+		if ( $callback instanceof Closure ) {
 			try {
-				$ref = new ReflectionFunction( $fn );
+				$ref = new ReflectionFunction( $callback );
 				return 'closure:' . $ref->getFileName() . ':' . $ref->getStartLine();
 			} catch ( ReflectionException $e ) {
-				return 'closure:' . spl_object_hash( $fn );
+				return 'closure:' . spl_object_hash( $callback );
 			}
 		}
 
