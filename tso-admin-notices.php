@@ -27,6 +27,7 @@ define( 'TSOAN_OPTION', 'tso_admin_notices_settings' );
 
 register_activation_hook( TSOAN_FILE, array( 'TSOAN_Manager', 'activate' ) );
 register_deactivation_hook( TSOAN_FILE, array( 'TSOAN_Manager', 'deactivate' ) );
+add_action( 'init', array( 'TSOAN_Manager', 'load_textdomain' ), 0 );
 add_action( 'plugins_loaded', array( 'TSOAN_Manager', 'get_instance' ) );
 
 /**
@@ -75,6 +76,19 @@ final class TSOAN_Manager {
 	 * @var array<string,true>
 	 */
 	private $wrapped_fn_keys = array();
+
+	/**
+	 * Load bundled translation catalogs (WordPress 6.1–6.4; 6.5+ JIT also works).
+	 *
+	 * @return void
+	 */
+	public static function load_textdomain() {
+		$locale = determine_locale();
+		$mofile = TSOAN_PATH . 'languages/tso-admin-notices-' . $locale . '.mo';
+		if ( is_readable( $mofile ) ) {
+			load_textdomain( 'tso-admin-notices', $mofile );
+		}
+	}
 
 	/**
 	 * Return singleton instance.

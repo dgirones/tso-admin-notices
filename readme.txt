@@ -88,5 +88,8 @@ No. The plugin only runs in the WordPress admin area (`is_admin()`), and never d
 
 == Upgrade Notice ==
 
+= 1.0.3 =
+Fixes notices that stayed visible while the counter showed zero; TSO plugins stay visible.
+
 = 1.0.2 =
 Critical fix for notices that stayed visible. Update and hard-refresh the admin.

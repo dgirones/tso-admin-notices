@@ -67,6 +67,18 @@
 		return wl.indexOf( source ) !== -1;
 	}
 
+	function isOwnFamily( source ) {
+		if ( ! source || 'unknown' === source || 'untagged' === source ) {
+			return false;
+		}
+		return (
+			0 === source.indexOf( 'tso-' ) ||
+			0 === source.indexOf( 'tso_' ) ||
+			0 === source.indexOf( 'mu-tso-' ) ||
+			0 === source.indexOf( 'mu-tso_' )
+		);
+	}
+
 	function collectPhpGroups() {
 		document.querySelectorAll( '.tsoan-hidden-group' ).forEach( function ( el ) {
 			if ( groups.indexOf( el ) !== -1 ) {
@@ -208,7 +220,7 @@
 
 		var source = getSource( notice );
 
-		if ( isWhitelisted( source ) ) {
+		if ( isWhitelisted( source ) || isOwnFamily( source ) ) {
 			notice.classList.add( 'tsoan-ok' );
 			return;
 		}
