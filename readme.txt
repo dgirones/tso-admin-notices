@@ -4,7 +4,7 @@ Tags: admin notices, notices manager, clean admin, plugins notices
 Requires at least: 6.1
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.3
+Stable tag: 1.0.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -66,30 +66,10 @@ No. The plugin only runs in the WordPress admin area (`is_admin()`), and never d
 
 == Changelog ==
 
-= 1.0.3 =
-* First-party TSO plugins (e.g. TSO Link Inspector) are no longer hidden — their onboarding/setup notices always stay visible.
-* Hide/keep decisions now ride on the notice element itself, so they survive WordPress core moving notices around the page on load. This fixes third-party nags (e.g. SweepPress / Dev4Press / Freemius install & update notices) that stayed visible with the counter stuck at zero, including on this plugin's own settings screen.
-* Also catch notices printed on `in_admin_header` (the full-width slot above the page).
-* Whitelisted plugins now stay visible against the JavaScript layer too, not only the PHP layer.
-
-= 1.0.2 =
-* Fixed notices still visible while counter showed zero (Backuply, Rank Math, etc.).
-* Bootstrap on plugins_loaded so late-registered notice callbacks are wrapped.
-* Broader zero-flash CSS under #wpbody-content with safe-zone exclusions.
-* Prefix TSOAN_ (≥5 chars) for WordPress.org Plugin Check.
-* Replaced inline style tag with wp_add_inline_style.
-* Requires WordPress 6.1+; PHP 7.4 compatible.
-
-= 1.0.1 =
-* Refactored prefixes and asset names.
-
 = 1.0.0 =
 * Initial release.
 
 == Upgrade Notice ==
 
-= 1.0.3 =
-Fixes notices that stayed visible while the counter showed zero; TSO plugins stay visible.
-
-= 1.0.2 =
-Critical fix for notices that stayed visible. Update and hard-refresh the admin.
+= 1.0.0 =
+Initial release.

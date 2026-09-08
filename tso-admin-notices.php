@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       TSO Admin Notices Manager
  * Description:       Hides annoying plugin notices (promotional, backup, update messages) from the WordPress admin. Notices remain recoverable via the admin bar.
- * Version:           1.0.3
+ * Version:           1.0.0
  * Requires at least: 6.1
  * Requires PHP:      7.4
  * Author:            Tu Soporte Online
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'TSOAN_VERSION', '1.0.3' );
+define( 'TSOAN_VERSION', '1.0.0' );
 define( 'TSOAN_FILE', __FILE__ );
 define( 'TSOAN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TSOAN_URL', plugin_dir_url( __FILE__ ) );

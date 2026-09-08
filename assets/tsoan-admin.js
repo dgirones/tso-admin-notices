@@ -7,7 +7,7 @@
  * Count = tracked groups on this screen (PHP wrappers + JS-hidden notices).
  *
  * @package TSO_Admin_Notices
- * @since   1.0.2
+ * @since   1.0.0
  */
 
 /* global tsoanAdminData */
